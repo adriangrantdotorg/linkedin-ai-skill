@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="340" viewBox="0 0 960 340" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>The same LinkedIn scraping request with and without the skill</title>
+  <rect x="1" y="1" width="958" height="338" rx="14" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+
+  <!-- Request -->
+  <rect x="24" y="44" width="200" height="232" rx="10" fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+  <text x="124" y="80" fill="#58a6ff" font-size="13" font-weight="700" text-anchor="middle">YOU ASK</text>
+  <text x="124" y="130" fill="#e6edf3" font-size="15" text-anchor="middle">
+    <tspan x="124">“Get the current</tspan>
+    <tspan x="124" dy="22">company from this</tspan>
+    <tspan x="124" dy="22">LinkedIn profile”</tspan>
+  </text>
+
+  <!-- Without lane -->
+  <text x="252" y="40" fill="#f85149" font-size="14" font-weight="700">😩 Without the skill</text>
+  <rect x="244" y="50" width="696" height="92" rx="10" fill="#2a1215" stroke="#f85149" stroke-opacity="0.5"/>
+  <g font-size="14" font-weight="700" text-anchor="middle">
+    <rect x="256" y="76" width="136" height="40" rx="8" fill="#3d1a1e" stroke="#f85149"/>
+    <text x="324" y="101" fill="#ffdcd7">Class selector</text>
+    <rect x="402" y="76" width="152" height="40" rx="8" fill="#3d1a1e" stroke="#f85149"/>
+    <text x="478" y="101" fill="#ffdcd7">Breaks on reload</text>
+    <rect x="564" y="76" width="136" height="40" rx="8" fill="#3d1a1e" stroke="#f85149"/>
+    <text x="632" y="101" fill="#ffdcd7">Wrong company</text>
+    <rect x="710" y="76" width="88" height="40" rx="8" fill="#3d1a1e" stroke="#f85149"/>
+    <text x="754" y="101" fill="#ffdcd7">Re-probe</text>
+    <rect x="808" y="76" width="120" height="40" rx="8" fill="#3b2a0a" stroke="#d29922"/>
+    <text x="868" y="101" fill="#f2cc60">Works · try 4</text>
+  </g>
+
+  <!-- With lane -->
+  <text x="252" y="170" fill="#3fb950" font-size="14" font-weight="700">😌 With the skill</text>
+  <rect x="244" y="180" width="696" height="92" rx="10" fill="#0f2417" stroke="#3fb950" stroke-opacity="0.5"/>
+  <g font-size="14" font-weight="700" text-anchor="middle">
+    <rect x="256" y="206" width="152" height="40" rx="8" fill="#163420" stroke="#3fb950"/>
+    <text x="332" y="231" fill="#d2f5dc">Checks 3 variants</text>
+    <rect x="418" y="206" width="128" height="40" rx="8" fill="#163420" stroke="#3fb950"/>
+    <text x="482" y="231" fill="#d2f5dc">Picks top card</text>
+    <rect x="556" y="206" width="120" height="40" rx="8" fill="#163420" stroke="#3fb950"/>
+    <text x="616" y="231" fill="#d2f5dc">Works · try 1</text>
+  </g>
+  <rect x="686" y="194" width="242" height="64" rx="8" fill="none" stroke="#3fb950" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="807" y="222" fill="#3fb950" font-size="15" font-weight="700" text-anchor="middle">Time you get back</text>
+  <text x="807" y="244" fill="#8b949e" font-size="13" text-anchor="middle">no guessing, no re-probing</text>
+
+  <!-- Time arrow -->
+  <line x1="256" y1="304" x2="920" y2="304" stroke="#8b949e" stroke-width="2"/>
+  <polygon points="930,304 918,297 918,311" fill="#8b949e"/>
+  <text x="256" y="326" fill="#8b949e" font-size="13">time →</text>
+</svg>
