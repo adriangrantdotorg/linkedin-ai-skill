@@ -4,7 +4,7 @@
 
 > An AI agent skill that helps you scrape LinkedIn pages reliably.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.txt) [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-0A66C2.svg)](https://github.com/anthropics/skills) [![Version](https://img.shields.io/github/v/release/adriangrantdotorg/linkedin?color=orange&label=Version)](https://github.com/adriangrantdotorg/linkedin/releases) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/adriangrantdotorg/linkedin/pulls)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.txt) [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-0A66C2.svg)](https://github.com/anthropics/skills) [![Version](https://img.shields.io/github/v/release/adriangrantdotorg/linkedin-ai-skill?color=orange&label=Version)](https://github.com/adriangrantdotorg/linkedin-ai-skill/releases) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/adriangrantdotorg/linkedin-ai-skill/pulls)
 
 ---
 
@@ -41,11 +41,11 @@ Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics
 
 ```bash
 # Claude Code
-git clone https://github.com/adriangrantdotorg/linkedin.git ~/.claude/skills/linkedin
+git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.claude/skills/linkedin
 # Cursor
-git clone https://github.com/adriangrantdotorg/linkedin.git ~/.cursor/skills/linkedin
+git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.cursor/skills/linkedin
 # ChatGPT & Codex
-git clone https://github.com/adriangrantdotorg/linkedin.git ~/.agents/skills/linkedin
+git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.agents/skills/linkedin
 ```
 
 | **Platform** | **Skills folder** |
