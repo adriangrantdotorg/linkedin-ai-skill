@@ -41,11 +41,11 @@ Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics
 
 ```bash
 # Claude Code
-git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.claude/skills/linkedin
+git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.claude/skills/linkedin-ai-skill
 # Cursor
-git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.cursor/skills/linkedin
+git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.cursor/skills/linkedin-ai-skill
 # ChatGPT & Codex
-git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.agents/skills/linkedin
+git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.agents/skills/linkedin-ai-skill
 ```
 
 | **Platform** | **Skills folder** |
