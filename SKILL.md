@@ -1,11 +1,11 @@
 ---
-name: linkedin
-description: Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, "get the company from this LinkedIn profile", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements) or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches.
+name: linkedin-ai-skill
+description: Battle-tested patterns for scraping data out of LinkedIn pages in your logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, "get the company from this LinkedIn profile", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements) or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches.
 ---
 
 # Scraping LinkedIn (logged-in DOM)
 
-Target: linkedin.com pages rendered in the user's logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
+Target: linkedin.com pages rendered in your logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
 
 ## The cardinal fact: markup is re-rolled per page load
 
@@ -21,13 +21,13 @@ LinkedIn A/B-serves **different frontend variants of the same page on every load
 
 On logged-in SPA pages there is **no** `meta[name=description]`/og: tags, **no** JSON-LD, **no** `<code>` data blobs (the classic `bpr-guid` voyager JSON embedded in the page is gone), and `document.title` is just `"Name | LinkedIn"` (sometimes prefixed `(3) ` with the notification count) — no company in it. The rendered DOM is the only source *in the page* — but see the next section: the voyager REST endpoints still answer.
 
-## The voyager API still answers same-origin fetches (verified 09-23-26)
+## The voyager API still answers same-origin fetches
 
 *Trigger:* you need data the page hasn't rendered — a job description in a background tab (LinkedIn renders lazy sections only in a VISIBLE tab), a company's website, the bold headings of a posting. *Discrimination:* the embedded JSON blobs are gone (above); the REST endpoints are not. They need the viewer's session: same-origin `fetch` from the page or a content script, `credentials: "include"`, header `csrf-token` = the `JSESSIONID` cookie value without quotes, `accept: application/json`. Unofficial — every call may fail; cache results and fail soft. *Action:*
 - `/voyager/api/jobs/jobPostings/<jobId>` → `title`, `description.text` + `description.attributes` (Bold / Paragraph / ListItem ranges — the section headings; offsets drift after emoji, so match by text), `companyDetails` (`urn:li:fs_normalized_company:<id>`), `applyMethod` (`companyApplyUrl` for offsite apply).
 - `/voyager/api/entities/companies/<id>` → `name`, `websiteUrl` (the company page's own Website field — may carry a path like `/subscribe`), `universalName`, `description`.
 
-## Jobs pages: the anchors (search results + job view, read live 09-23-26)
+## Jobs pages: the anchors (search results + job view)
 
 Stable across loads because they are LinkedIn's own `componentkey` / `data-testid` / ids, not classes:
 - Job cards: `[componentkey^="job-card-component-ref-<jobId>"]`, the `Dismiss <title> job` button; classic: `li[data-occludable-job-id]`.
@@ -116,4 +116,5 @@ Known edge: a profile whose top card lists only a school (no current employer) r
    (Find the tab by URL substring — "active tab of front window" silently probes whatever tab the user switched to.)
 2. When the value is wrong, don't guess — enumerate: dump all candidate elements with alt/href/absolute-Y/closest-section and identify which one is the top card *on this render*.
 3. Test on **at least two different profiles** and on **fresh loads** before declaring a selector fixed.
+4. If the scraper runs inside an automation tool, do the final verification through that tool itself, since that exercises its own variable handling and front-browser resolution.
 
