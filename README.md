@@ -2,7 +2,7 @@
 
 ![LinkedIn AI Skill Banner](banner.png)
 
-> An AI agent skill that helps you scrape LinkedIn pages reliably.
+> An AI agent skill that reads data out of logged-in LinkedIn pages reliably, even as LinkedIn reshuffles its markup on every load.
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.txt) [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-0A66C2.svg)](https://github.com/anthropics/skills) [![Version](https://img.shields.io/github/v/release/adriangrantdotorg/linkedin-ai-skill?color=orange&label=Version)](https://github.com/adriangrantdotorg/linkedin-ai-skill/releases) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/adriangrantdotorg/linkedin-ai-skill/pulls)
 
@@ -15,6 +15,15 @@
 - 💸 **$0 added cost** — runs inside the AI you already use
 - 🧩 **No setup** — one Markdown file, no packages, no build
 
+| | 😩 Without this Skill | 😌 With this Skill |
+| --- | :---: | :---: |
+| 🔁 Tries until it works | 🧪 ~4 | **1** |
+| 🧭 Page layouts handled | 🧪 1 | **3** |
+| 📦 Packages to install | 🧪 a scraping library | **none** |
+| 🪙 AI usage burned on retries | 🧪 ~4× | **1×** |
+
+<sub>🧪 estimate</sub>
+
 ---
 
 ## ✨ Features
@@ -26,6 +35,7 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 - 🏢 **Current company from any profile** — a ready-to-run scraper for all three top-card layouts
 - 💼 **Jobs pages mapped** — stable anchors for job cards, details, filters and the scroll container
 - 📡 **Data the page never rendered** — job descriptions and company websites via LinkedIn's own internal API
+- 💬 **A person's comments, linked exactly** — the post and the direct link to each comment
 - 🚫 **Dead ends skipped** — no time wasted on meta tags, JSON-LD or old data blobs
 - 🩺 **A debugging routine that finds the real cause** — probe the live tab, list candidates, test on fresh loads
 
@@ -33,11 +43,7 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 
 ## 🚀 Installation
 
-Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics/skills) and a Chromium browser you're logged in to LinkedIn with. For scripts that drive Chrome, turn on **View ▸ Developer ▸ Allow JavaScript from Apple Events**.
-
-
-
----
+Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics/skills) and a Chromium browser signed in to LinkedIn. For scripts that drive Chrome, turn on **View ▸ Developer ▸ Allow JavaScript from Apple Events**.
 
 ```bash
 # Claude Code
@@ -54,6 +60,8 @@ git clone https://github.com/adriangrantdotorg/linkedin-ai-skill.git ~/.agents/s
 | **[Cursor](https://cursor.com/docs/skills)** | `~/.cursor/skills/` |
 | **[ChatGPT & Codex](https://learn.chatgpt.com/docs/build-skills)** | `~/.agents/skills/` |
 
+---
+
 ## 💡 Usage
 
 Ask for LinkedIn data as usual; the skill kicks in on its own.
@@ -62,7 +70,7 @@ Ask for LinkedIn data as usual; the skill kicks in on its own.
 | --- | --- |
 | "Get the current company from this LinkedIn profile." | A **JavaScript scraper** that checks every layout and returns the top-card company |
 | "Grab the full description of this LinkedIn job, even in a background tab." | A **same-origin API call** with the right headers, cached and failing softly |
-| "My LinkedIn scraper suddenly returns the wrong company." | A **debugging run** against the live tab that finds the new variant |
+| "Which posts did this person comment on? Link me to each comment." | A **list of exact comment links**, each with its post title and date |
 
 ---
 
