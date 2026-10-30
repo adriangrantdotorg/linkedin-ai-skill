@@ -36,6 +36,7 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 - 💼 **Jobs pages mapped** — stable anchors for job cards, details, filters and the scroll container
 - 📡 **Data the page never rendered** — job descriptions and company websites via LinkedIn's own internal API
 - 💬 **A person's comments, linked exactly** — the post and the direct link to each comment
+- 🤝 **Who you know at a firm** — mutual connections and 2nd-degree staff, past and present
 - 🚫 **Dead ends skipped** — no time wasted on meta tags, JSON-LD or old data blobs
 - 🩺 **A debugging routine that finds the real cause** — probe the live tab, list candidates, test on fresh loads
 
@@ -70,7 +71,7 @@ Ask for LinkedIn data as usual; the skill kicks in on its own.
 | --- | --- |
 | "Get the current company from this LinkedIn profile." | A **JavaScript scraper** that checks every layout and returns the top-card company |
 | "Grab the full description of this LinkedIn job, even in a background tab." | A **same-origin API call** with the right headers, cached and failing softly |
-| "Which posts did this person comment on? Link me to each comment." | A **list of exact comment links**, each with its post title and date |
+| "Who do I know at Acme Partners, and who used to work there?" | A **list of 2nd-degree people**, each with their role at the firm and shared connections |
 
 ---
 
