@@ -1,6 +1,6 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in a logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements) or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in a logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
@@ -48,7 +48,7 @@ The "current company" in a profile's top card (right rail / under the name) has 
 
 Across every variant: **the top card is the highest company element on the page** (feed/experience modules render lower), and **the company row always sits above the school row**. So: collect candidates from all three patterns, compute absolute Y (`rect.top + window.scrollY` — scroll-proof), and take the minimum. Skip zero-size (hidden) elements and negative-Y stubs.
 
-Canonical scraper:
+Canonical scraper (verified on live pages):
 
 ```js
 (function () {
@@ -98,6 +98,28 @@ Known edge: a profile whose top card lists only a school (no current employer) r
 **Held up:** alt-text patterns (`View company: …`, `… logo`), href shapes (`/company/`, `/school/`, `a[href*="contact-info"]` for locating the top card), CDN src substrings (`company-logo`), absolute-Y geometry, text-leaf matching.
 
 **Failed in practice:** hashed class names (rotate per build); `aria-label="Current company: …"` buttons (old DOM, gone from current variants — kept only as last-ditch fallback); document-order "first match" (feed modules can precede the top card match); scoping to the top-card `<section>` (the right rail lives **outside** the section containing the name and Contact info in some variants); assuming the DOM you probed minutes ago is the DOM that's there now.
+
+## A person's comments → the exact posts and comments
+
+- *Trigger:* you need the link behind "<person> commented 'LOI'" (their keyword replies to "comment X and I'll send you
+  Y" posts), for research notes or for any claim about what they asked for.
+- *Discrimination:* the comments activity page shows the comment text but no post URL in any `href`; a signed-in
+  same-origin `fetch` of `/feed/update/…` returns a page with no `og:` tags; and a browser-automation JS tool may blank
+  results that hold query strings or keys like `author`, so return bare IDs and build the URLs outside the page.
+- *Action:*
+  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a signed-in browser tab and scroll to the
+     bottom 8 times, 1.2 s apart.
+  2. Each comment card is an element whose `componentkey` holds `activity:<19-digit post id>` and whose `innerText`
+     (whitespace collapsed) ends with `Follow <their comment>`: match `/Follow (LOI|model|Finance)$/` and read the id.
+     The comment's own id sits in `replaceableComment_urn:li:comment:(activity:<post>,<comment>)`.
+  3. Post link: `curl -sL -A '<Safari user agent>' "https://www.linkedin.com/feed/update/urn:li:activity:<post>/"`
+     (signed out) and read `og:url` (`linkedin.com/posts/<author>_<slug>-activity-<post>-<code>`) and `og:title`.
+  4. Exact comment link, the one a claim about the person links to:
+     `https://www.linkedin.com/feed/update/urn:li:activity:<post>?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A<post>%2C<comment>%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%28<comment>%2Curn%3Ali%3Aactivity%3A<post>%29`.
+     Open it signed in once and check it lands on the comment.
+  5. A post's date from its id: `(id >> 22)` is milliseconds since 1970
+     (`python3 -c 'import datetime;print(datetime.datetime.utcfromtimestamp((<id> >> 22)/1000).date())'`).
+  6. Close the tab when done.
 
 ## Debugging workflow
 
