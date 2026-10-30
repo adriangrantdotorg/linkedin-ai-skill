@@ -1,11 +1,11 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in a logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
 
-Target: linkedin.com pages rendered in a logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
+Target: linkedin.com pages rendered in the user's logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
 
 ## The cardinal fact: markup is re-rolled per page load
 
@@ -48,7 +48,7 @@ The "current company" in a profile's top card (right rail / under the name) has 
 
 Across every variant: **the top card is the highest company element on the page** (feed/experience modules render lower), and **the company row always sits above the school row**. So: collect candidates from all three patterns, compute absolute Y (`rect.top + window.scrollY` — scroll-proof), and take the minimum. Skip zero-size (hidden) elements and negative-Y stubs.
 
-Canonical scraper (verified on live pages):
+Canonical scraper (deployed and verified):
 
 ```js
 (function () {
@@ -102,12 +102,12 @@ Known edge: a profile whose top card lists only a school (no current employer) r
 ## A person's comments → the exact posts and comments
 
 - *Trigger:* you need the link behind "<person> commented 'LOI'" (their keyword replies to "comment X and I'll send you
-  Y" posts), for research notes or for any claim about what they asked for.
+  Y" posts), for a dossier or for any claim about what they asked for.
 - *Discrimination:* the comments activity page shows the comment text but no post URL in any `href`; a signed-in
-  same-origin `fetch` of `/feed/update/…` returns a page with no `og:` tags; and a browser-automation JS tool may blank
+  same-origin `fetch` of `/feed/update/…` returns a page with no `og:` tags; and some browser-automation JS tools blank
   results that hold query strings or keys like `author`, so return bare IDs and build the URLs outside the page.
 - *Action:*
-  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a signed-in browser tab and scroll to the
+  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a browser tab and scroll to the
      bottom 8 times, 1.2 s apart.
   2. Each comment card is an element whose `componentkey` holds `activity:<19-digit post id>` and whose `innerText`
      (whitespace collapsed) ends with `Follow <their comment>`: match `/Follow (LOI|model|Finance)$/` and read the id.
@@ -120,6 +120,34 @@ Known edge: a profile whose top card lists only a school (no current employer) r
   5. A post's date from its id: `(id >> 22)` is milliseconds since 1970
      (`python3 -c 'import datetime;print(datetime.datetime.utcfromtimestamp((<id> >> 22)/1000).date())'`).
   6. Close the tab when done.
+
+## Mutual connections, and who works (or worked) at a firm
+
+- *Trigger:* you need the people you and someone share ("N mutual connections"), or every 2nd-degree person tied to
+  a firm, for a warm-intro search or any "who do I know at X" question.
+- *Discrimination:* the mutuals link's `href` carries `connectionOf=<urn>` in a query string, and some browser-automation
+  JS tools blank results that hold query strings (the result came back `[BLOCKED: Base64 encoded data]`), so never
+  return the URL; click the link in the page instead. The page number is a query param too: change it in-page with
+  `new URL(location.href)`, never by typing a URL. A people search for the firm's name also returns other companies
+  that share a word (a search for Acme Partners also brings up Acme Health): judge each card by its "<Role> at <Firm>" snippet.
+- *Action:*
+  1. Open the profile in a browser tab, wait ~2.5 s, then
+     `[...document.querySelectorAll('a')].find(a=>/mutual/i.test(a.innerText)).click()`; the text says the count
+     ("Ana, Ben and 50 other mutual connections" = 52).
+  2. Each results page holds 10. Read names with a JS extractor over `document.querySelector('main').innerText` split
+     into trimmed lines: a line ending `• 1st` (or followed by the line `• 1st`) is a name, the next line its headline.
+     Next page: `const u=new URL(location.href); u.searchParams.set('page','2'); location.href=u.toString()`, then a
+     second call that waits ~4 s and extracts. Batch every page in one run; keep each result short (a
+     long one comes back `[TRUNCATED]`: re-read that page with names only).
+  3. People tied to a firm, 2nd degree: navigate to
+     `https://www.linkedin.com/search/results/people/?keywords=<Firm>&network=%5B%22S%22%5D`; per card read the name
+     (line before `• 2nd`), the snippet holding the firm ("Limited Partner at Acme Partners since 2017", "At
+     Acme Partners from January 2022 to June 2025") and the mutuals line ("Ana Lee, Ben Cho & 5 other").
+     Former staff and LPs show up here; flag anyone who held the job being applied for.
+  4. Profile slugs: `[...new Set([...document.querySelectorAll('main a[href*="/in/"]')].map(a=>(a.innerText.trim()
+     .split('\n')[0])+' '+a.href.split('?')[0].replace('https://www.linkedin.com/in/','')))]` (strip the query string
+     in-page so the result passes).
+  5. Close the tab when done.
 
 ## Debugging workflow
 
@@ -138,5 +166,4 @@ Known edge: a profile whose top card lists only a school (no current employer) r
    (Find the tab by URL substring — "active tab of front window" silently probes whatever tab the user switched to.)
 2. When the value is wrong, don't guess — enumerate: dump all candidate elements with alt/href/absolute-Y/closest-section and identify which one is the top card *on this render*.
 3. Test on **at least two different profiles** and on **fresh loads** before declaring a selector fixed.
-4. If the scraper runs inside an automation tool, do the final verification through that tool itself, since that exercises its own token processing and front-browser resolution.
 
