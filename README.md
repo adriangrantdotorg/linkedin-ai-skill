@@ -32,7 +32,7 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 
 ![The same request with and without the skill: without it, the AI writes a class selector that breaks on reload and needs four tries; with it, the AI checks all three variants and gets it right on the first try](docs/media/with-vs-without-skill.svg)
 
-- 🏢 **Current company from any profile** — a ready-to-run scraper for all three top-card layouts
+- 🏢 **Current employer from any profile** — all three top-card layouts, plus an API fallback for activity pages
 - 💼 **Jobs pages mapped** — stable anchors for job cards, details, filters and the scroll container
 - 📡 **Data the page never rendered** — job descriptions and company websites via LinkedIn's own internal API
 - 💬 **A person's comments, linked exactly** — the post and the direct link to each comment
@@ -44,7 +44,7 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 
 ## 🚀 Installation
 
-Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics/skills) and a Chromium browser signed in to LinkedIn. For scripts that drive Chrome, turn on **View ▸ Developer ▸ Allow JavaScript from Apple Events**.
+Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics/skills) and a Chromium browser signed in to LinkedIn. For AppleScript that drives Chrome on a Mac, turn on **View ▸ Developer ▸ Allow JavaScript from Apple Events**.
 
 ```bash
 # Claude Code
