@@ -1,11 +1,11 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in a logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
 
-Target: linkedin.com pages rendered in the user's logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
+Target: linkedin.com pages rendered in your logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
 
 ## The cardinal fact: markup is re-rolled per page load
 
@@ -26,6 +26,17 @@ On logged-in SPA pages there is **no** `meta[name=description]`/og: tags, **no**
 *Trigger:* you need data the page hasn't rendered — a job description in a background tab (LinkedIn renders lazy sections only in a VISIBLE tab), a company's website, the bold headings of a posting. *Discrimination:* the embedded JSON blobs are gone (above); the REST endpoints are not. They need the viewer's session: same-origin `fetch` from the page or a content script, `credentials: "include"`, header `csrf-token` = the `JSESSIONID` cookie value without quotes, `accept: application/json`. Unofficial — every call may fail; cache results and fail soft. *Action:*
 - `/voyager/api/jobs/jobPostings/<jobId>` → `title`, `description.text` + `description.attributes` (Bold / Paragraph / ListItem ranges — the section headings; offsets drift after emoji, so match by text), `companyDetails` (`urn:li:fs_normalized_company:<id>`), `applyMethod` (`companyApplyUrl` for offsite apply).
 - `/voyager/api/entities/companies/<id>` → `name`, `websiteUrl` (the company page's own Website field — may carry a path like `/subscribe`), `universalName`, `description`.
+- `/voyager/api/identity/profiles/<slug>/positionGroups` → `elements[]` newest first, each with `miniCompany` (`name`, `universalName`, `objectUrn`) and `positions[]` (`title`, `timePeriod`); the CURRENT employer is the first group holding a position with `startDate` and no `endDate`. Use it when a page shows only the headline (a person's `recent-activity` page has no company link). `profiles/<slug>/profileView` answers 410 (retired).
+
+## A person's profile and activity pages
+
+- Titles: activity `Activity | <Name> | LinkedIn`; profile `<Name> | LinkedIn` (either may lead with `(3) `).
+- The activity page's left card is an `aside[aria-label="Sidebar"]`: photo, name, headline ("<Title> @
+  <Company>"), Followers, a Message link (`/messaging/compose/`) and `button[aria-label="Follow <Name>"]`.
+  It has NO company link; `/company/` links lower down belong to feed posts. The current employer: voyager
+  `positionGroups` (above).
+- Profile sub-pages (`/in/<slug>/details/experience/`, `/overlay/contact-info/`) are separate paths; match the
+  profile itself with `^/in/<slug>/?$`.
 
 ## Jobs pages: the anchors (search results + job view)
 
@@ -48,7 +59,7 @@ The "current company" in a profile's top card (right rail / under the name) has 
 
 Across every variant: **the top card is the highest company element on the page** (feed/experience modules render lower), and **the company row always sits above the school row**. So: collect candidates from all three patterns, compute absolute Y (`rect.top + window.scrollY` — scroll-proof), and take the minimum. Skip zero-size (hidden) elements and negative-Y stubs.
 
-Canonical scraper (deployed and verified):
+Canonical scraper (deployed and verified in production):
 
 ```js
 (function () {
@@ -124,7 +135,7 @@ Known edge: a profile whose top card lists only a school (no current employer) r
 ## Mutual connections, and who works (or worked) at a firm
 
 - *Trigger:* you need the people you and someone share ("N mutual connections"), or every 2nd-degree person tied to
-  a firm, for a warm-intro search or any "who do I know at X" question.
+  a firm, for any "who do I know at X" question.
 - *Discrimination:* the mutuals link's `href` carries `connectionOf=<urn>` in a query string, and some browser-automation
   JS tools blank results that hold query strings (the result came back `[BLOCKED: Base64 encoded data]`), so never
   return the URL; click the link in the page instead. The page number is a query param too: change it in-page with
@@ -137,7 +148,7 @@ Known edge: a profile whose top card lists only a school (no current employer) r
   2. Each results page holds 10. Read names with a JS extractor over `document.querySelector('main').innerText` split
      into trimmed lines: a line ending `• 1st` (or followed by the line `• 1st`) is a name, the next line its headline.
      Next page: `const u=new URL(location.href); u.searchParams.set('page','2'); location.href=u.toString()`, then a
-     second call that waits ~4 s and extracts. Batch every page in one run; keep each result short (a
+     second call that waits ~4 s and extracts. Batch every page in one call; keep each result short (a
      long one comes back `[TRUNCATED]`: re-read that page with names only).
   3. People tied to a firm, 2nd degree: navigate to
      `https://www.linkedin.com/search/results/people/?keywords=<Firm>&network=%5B%22S%22%5D`; per card read the name
