@@ -1,6 +1,6 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), WHENEVER the user links a person's profile (linkedin.com/in/…: read their recent posts and comments before answering), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
@@ -27,25 +27,6 @@ On logged-in SPA pages there is **no** `meta[name=description]`/og: tags, **no**
 - `/voyager/api/jobs/jobPostings/<jobId>` → `title`, `description.text` + `description.attributes` (Bold / Paragraph / ListItem ranges — the section headings; offsets drift after emoji, so match by text), `companyDetails` (`urn:li:fs_normalized_company:<id>`), `applyMethod` (`companyApplyUrl` for offsite apply).
 - `/voyager/api/entities/companies/<id>` → `name`, `websiteUrl` (the company page's own Website field — may carry a path like `/subscribe`), `universalName`, `description`.
 - `/voyager/api/identity/profiles/<slug>/positionGroups` → `elements[]` newest first, each with `miniCompany` (`name`, `universalName`, `objectUrn`) and `positions[]` (`title`, `timePeriod`); the CURRENT employer is the first group holding a position with `startDate` and no `endDate`. Use it when a page shows only the headline (a person's `recent-activity` page has no company link). `profiles/<slug>/profileView` answers 410 (retired).
-
-## The user links a person → read their recent posts and comments first
-
-- *Trigger:* the user's message holds a link to a PERSON on LinkedIn (`linkedin.com/in/<slug>/`, any sub-path such as
-  `/recent-activity/…` or `/details/…`), in any session or repo, with or without a question about them.
-- *Discrimination:* A company page (`/company/…`), a job (`/jobs/…`) or a single post link
-  (`/posts/…`, `/feed/update/…`) is not this, though a post's AUTHOR the user names as the point of the ask is. A long list
-  of profiles copied from a site (a staff directory) is not this either; each person the user links one by one is.
-- *Action:* before answering about them, in Claude in Chrome (signed in):
-  1. Open `/in/<slug>/recent-activity/all/` and `/recent-activity/comments/`; scroll each to its end (the "Reading
-     a whole profile" steps below: `main`'s length unchanged 4 checks in a row). On one profile,
-     `all/` held 81 posts going back 13 years and `comments/` 20 comments going back 2 months.
-  2. Weight the last 3 to 6 months: list the themes they keep returning to, people and programs they name, causes
-     they push, what they celebrate, and their tone; one line each, with the post's age.
-  3. Use it in the answer (an outreach note, a warm intro, an interview prep): their words and interests, never a
-     claim they didn't make. A quote links its post or comment ("A person's comments" below for the exact link).
-  4. If notes are kept on the person, give them a `## Recent activity` section with
-     the date it was read; re-read when the section is over 14 days old.
-  5. Reactions (`/recent-activity/reactions/`) only when posts and comments are thin (under 5 in 3 months).
 
 ## A person's profile and activity pages
 
@@ -78,7 +59,7 @@ The "current company" in a profile's top card (right rail / under the name) has 
 
 Across every variant: **the top card is the highest company element on the page** (feed/experience modules render lower), and **the company row always sits above the school row**. So: collect candidates from all three patterns, compute absolute Y (`rect.top + window.scrollY` — scroll-proof), and take the minimum. Skip zero-size (hidden) elements and negative-Y stubs.
 
-Canonical scraper (deployed and verified in production):
+Canonical scraper (verified on live pages):
 
 ```js
 (function () {
@@ -212,6 +193,9 @@ Known edge: a profile whose top card lists only a school (no current employer) r
   7. **Activity has three tabs; read all of them.** `recent-activity/all/` can say "Nothing to see for now" while
      Comments and Reactions hold a year of items (a hiring manager: no posts, 11 comments, 18 reactions). Each
      reaction card starts with "<Name> likes this"; read its author, age and first long line.
+     `all/` holds only the person's OWN posts and reposts, never their comments (a nonprofit director: 81 posts in
+     `all/`, their 20 comments only on `comments/`). Each comment card's text holds the post's author headline first,
+     then the person's own comment under their name: split the card at their name line to read what they wrote.
   8. **A company's Posts tab: read it under both sorts.** The "Sort by: Top" control opens a Top / Recent menu
      (click it by its screen position: it is not a `button` the text search finds). A small firm may hold a single
      repost (a 2-10 person VC firm: one portfolio repost); record that as the whole feed. The About tab's
@@ -220,9 +204,23 @@ Known edge: a profile whose top card lists only a school (no current employer) r
      `/in/` links, so a name → slug map can hand one person's slug to the next card. Take the FIRST `/in/` link after
      the card's name line, and check a duplicate name (two cards with one name) by its headline.
 
+## "Can I connect Claude to LinkedIn?"
+
+- *Trigger:* the user asks for a LinkedIn connector or integration like their other connectors: Claude seeing their
+  new connections, messages, feed or notifications.
+- *Discrimination:* Claude's connector directory (`search_mcp_registry` "linkedin") lists one connector made by
+  LinkedIn, **LinkedIn Hiring Pro** (`mcp.linkedin.com/mcp-hiring-pro`), which only drafts and posts a free job
+  listing. The rest are third parties: Crustdata (public company and people data), marketing and ad tools, and
+  account-automation tools (HeyReach, Postiv) that work without LinkedIn's approval and risk a ban. LinkedIn gives
+  connection data only to partners it approves (third-party guides; not confirmed on LinkedIn's own pages). Re-check
+  the registry before answering: this changes.
+- *Action:* answer that no connector reads the user's network, then give the two routes that work today: (1) Claude in
+  Chrome signed in as the user (this skill; their Connections page sorted by "Recently added"); (2) their LinkedIn Data Export:
+  `Connections.csv` has a `Connected On` column.
+
 ## Debugging workflow
 
-1. Test JS from the shell against the real tab — this is byte-identical to what an automation tool's run-JavaScript action does:
+1. Test JS from the shell against the real tab — this is what an automation tool's run-JavaScript action does:
    ```applescript
    tell application "Google Chrome"
      repeat with w in windows
