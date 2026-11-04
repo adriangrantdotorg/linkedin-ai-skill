@@ -11,7 +11,7 @@
 ## ⬇️ Why Install?
 
 - 🎯 **Right company, first try** — never grabs a feed post or school by mistake
-- 🔁 **Survives LinkedIn's reshuffles** — works across every known page variant
+- 📚 **"Read in full" means it** — every profile section and feed tab, counted
 - 💸 **$0 added cost** — runs inside the AI you already use
 - 🧩 **No setup** — one Markdown file, no packages, no build
 
@@ -19,8 +19,8 @@
 | --- | :---: | :---: |
 | 🔁 Tries until it works | 🧪 ~4 | **1** |
 | 🧭 Page layouts handled | 🧪 1 | **3** |
+| 📋 Profile sections checked | 🧪 2 | **13** |
 | 📦 Packages to install | 🧪 a scraping library | **none** |
-| 🪙 AI usage burned on retries | 🧪 ~4× | **1×** |
 
 <sub>🧪 estimate</sub>
 
@@ -32,19 +32,19 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 
 ![The same request with and without the skill: without it, the AI writes a class selector that breaks on reload and needs four tries; with it, the AI checks all three variants and gets it right on the first try](docs/media/with-vs-without-skill.svg)
 
-- 🏢 **Current employer from any profile** — all three top-card layouts, plus an API fallback for activity pages
-- 💼 **Jobs pages mapped** — stable anchors for job cards, details, filters and the scroll container
-- 📡 **Data the page never rendered** — job descriptions and company websites via LinkedIn's own internal API
+- 🏢 **Current employer from any profile** — all three top-card layouts, plus an API fallback
+- 📚 **Whole profiles and feeds, provably read** — every details page, all three activity tabs, interests lists
+- 💼 **Jobs pages mapped** — stable anchors for job cards, details, filters and scrolling
+- 📡 **Data the page never rendered** — job descriptions and company websites via LinkedIn's internal API
 - 💬 **A person's comments, linked exactly** — the post and the direct link to each comment
 - 🤝 **Who you know at a firm** — mutual connections and 2nd-degree staff, past and present
-- 🚫 **Dead ends skipped** — no time wasted on meta tags, JSON-LD or old data blobs
-- 🩺 **A debugging routine that finds the real cause** — probe the live tab, list candidates, test on fresh loads
+- 🩺 **Debugging that finds the real cause** — probe the live tab, list candidates, test fresh loads
 
 ---
 
 ## 🚀 Installation
 
-Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics/skills) and a Chromium browser signed in to LinkedIn. For AppleScript that drives Chrome on a Mac, turn on **View ▸ Developer ▸ Allow JavaScript from Apple Events**.
+Needs an AI assistant that supports [Agent Skills](https://github.com/anthropics/skills) and a Chromium browser it can drive, signed in to LinkedIn (for example Claude in Chrome). For AppleScript that drives Chrome on a Mac, turn on **View ▸ Developer ▸ Allow JavaScript from Apple Events**.
 
 ```bash
 # Claude Code
@@ -70,7 +70,7 @@ Ask for LinkedIn data as usual; the skill kicks in on its own.
 | You say | The skill makes |
 | --- | --- |
 | "Get the current company from this LinkedIn profile." | A **JavaScript scraper** that checks every layout and returns the top-card company |
-| "Grab the full description of this LinkedIn job, even in a background tab." | A **same-origin API call** with the right headers, cached and failing softly |
+| "Read everything on this person's profile and activity." | A **full read** of every section and tab, with empty ones marked and posts counted |
 | "Who do I know at Acme Partners, and who used to work there?" | A **list of 2nd-degree people**, each with their role at the firm and shared connections |
 
 ---
