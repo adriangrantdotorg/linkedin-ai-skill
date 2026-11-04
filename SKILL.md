@@ -1,11 +1,11 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in a logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
 
-Target: linkedin.com pages rendered in your logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
+Target: linkedin.com pages rendered in a logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
 
 ## The cardinal fact: markup is re-rolled per page load
 
@@ -59,7 +59,7 @@ The "current company" in a profile's top card (right rail / under the name) has 
 
 Across every variant: **the top card is the highest company element on the page** (feed/experience modules render lower), and **the company row always sits above the school row**. So: collect candidates from all three patterns, compute absolute Y (`rect.top + window.scrollY` — scroll-proof), and take the minimum. Skip zero-size (hidden) elements and negative-Y stubs.
 
-Canonical scraper (deployed and verified):
+Canonical scraper:
 
 ```js
 (function () {
@@ -134,7 +134,7 @@ Known edge: a profile whose top card lists only a school (no current employer) r
 
 ## Mutual connections, and who works (or worked) at a firm
 
-- *Trigger:* you need the people you and someone share ("N mutual connections"), or every 2nd-degree person tied to
+- *Trigger:* you need the people the user and someone share ("N mutual connections"), or every 2nd-degree person tied to
   a firm, for any "who do I know at X" question.
 - *Discrimination:* the mutuals link's `href` carries `connectionOf=<urn>` in a query string, and the Claude in Chrome
   JS tool blanks results that hold query strings (the result came back `[BLOCKED: Base64 encoded data]`), so never
@@ -164,10 +164,10 @@ Known edge: a profile whose top card lists only a school (no current employer) r
 
 - *Trigger:* you must confirm a LinkedIn page can be fully read, or capture a profile completely (a job's link
   check, a note on a person).
-- *Discrimination:* a page that renders is not a page that was read. In one variant a profile page drew only
+- *Discrimination:* a page that renders is not a page that was read. In one observed variant a profile page drew only
   the top card, About, Featured and Activity, with no Experience, Education or any other section even after scrolling.
-  A first pass that read only `/details/experience/` and `/details/education/` reported "read in full" while 11
-  sections were unopened. An activity feed loads in chunks as you scroll, and the sidebar's "Show more" (People you
+  A pass that reads only `/details/experience/` and `/details/education/` can report "read in full" while 11
+  sections are unopened. An activity feed loads in chunks as you scroll, and the sidebar's "Show more" (People you
   may know) is not the feed's.
 - *Action:*
   1. Profile: open every `/in/<slug>/details/<section>/` page: experience, education, skills, certifications,
@@ -185,10 +185,25 @@ Known edge: a profile whose top card lists only a school (no current employer) r
      card's headline or snippet, or on the first entry of their `/details/experience/` (a card can show a headline
      with no employer). A guessed company slug (`/company/<guess>/people/`) lands on `/company/unavailable/`, and the
      top card may carry no company link: search per name instead.
+  6. **Interests lists load inside their own scroller.** Each tab draws about 10 items; the rest load only
+     when the list's OWN overflow container scrolls, not the window (a partner's Companies tab: 10 → 21). Scroll every
+     element whose `scrollHeight > clientHeight` and whose `overflowY` is auto or scroll, until the item count stops
+     changing 4 checks in a row. Top Voices lines are followed by the sidebar's "More profiles for you": cut the text
+     at that line, or sidebar people read as the person's follows.
+  7. **Activity has three tabs; read all of them.** `recent-activity/all/` can say "Nothing to see for now" while
+     Comments and Reactions hold a year of items (for example: no posts, 11 comments, 18 reactions). Each
+     reaction card starts with "<Name> likes this"; read its author, age and first long line.
+  8. **A company's Posts tab: read it under both sorts.** The "Sort by: Top" control opens a Top / Recent menu
+     (click it by its screen position: it is not a `button` the text search finds). A small firm may hold a single
+     repost (a 2-10 person VC firm: one portfolio repost); record that as the whole feed. The About tab's
+     "associated members" count and website go in the same note.
+  9. **People search slugs: map by card order, not by name.** Each card's mutual-connection line is also made of
+     `/in/` links, so a name → slug map can hand one person's slug to the next card. Take the FIRST `/in/` link after
+     the card's name line, and check a duplicate name (two cards with one name) by its headline.
 
 ## Debugging workflow
 
-1. Test JS from the shell against the real tab — this is byte-identical to what an automation tool's run-JavaScript action does:
+1. Test JS from the shell against the real tab — this runs the same code an automation tool's run-JavaScript action would:
    ```applescript
    tell application "Google Chrome"
      repeat with w in windows
