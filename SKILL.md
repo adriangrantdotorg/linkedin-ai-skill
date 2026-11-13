@@ -1,11 +1,11 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in a logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in your logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
 
-Target: linkedin.com pages rendered in a logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
+Target: linkedin.com pages rendered in your logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
 
 ## The cardinal fact: markup is re-rolled per page load
 
@@ -23,10 +23,10 @@ On logged-in SPA pages there is **no** `meta[name=description]`/og: tags, **no**
 
 ## The voyager API still answers same-origin fetches
 
-*Trigger:* you need data the page hasn't rendered — a job description in a background tab (LinkedIn renders lazy sections only in a VISIBLE tab), a company's website, the bold headings of a posting. *Discrimination:* the embedded JSON blobs are gone (above); the REST endpoints are not. They need the viewer's session: same-origin `fetch` from the page or a content script, `credentials: "include"`, header `csrf-token` = the `JSESSIONID` cookie value without quotes, `accept: application/json`. Unofficial — every call may fail; cache results and fail soft. An AI agent's safety checks may refuse such a `fetch` as website-access circumvention; then read the visible `/details/` pages instead ("Reading a whole profile" below). *Action:*
+*Trigger:* you need data the page hasn't rendered — a job description in a background tab (LinkedIn renders lazy sections only in a VISIBLE tab), a company's website, the bold headings of a posting. *Discrimination:* the embedded JSON blobs are gone (above); the REST endpoints are not. They need the viewer's session: same-origin `fetch` from the page or a content script, `credentials: "include"`, header `csrf-token` = the `JSESSIONID` cookie value without quotes, `accept: application/json`. Unofficial — every call may fail; cache results and fail soft. An AI agent's permission checks may refuse such a `fetch` as website-access circumvention; then read the visible `/details/` pages instead ("Reading a whole profile" below). *Action:*
 - `/voyager/api/jobs/jobPostings/<jobId>` → `title`, `description.text` + `description.attributes` (Bold / Paragraph / ListItem ranges — the section headings; offsets drift after emoji, so match by text), `companyDetails` (`urn:li:fs_normalized_company:<id>`), `applyMethod` (`companyApplyUrl` for offsite apply).
 - `/voyager/api/entities/companies/<id>` → `name`, `websiteUrl` (the company page's own Website field — may carry a path like `/subscribe`), `universalName`, `description`.
-- `/voyager/api/identity/profiles/<slug>/positionGroups` → `elements[]` newest first, each with `miniCompany` (`name`, `universalName`, `objectUrn`) and `positions[]` (`title`, `timePeriod`); the CURRENT employer is the first group holding a position with `startDate` and no `endDate`. Use it when a page shows only the headline (a person's `recent-activity` page has no company link). `profiles/<slug>/profileView` answers 410 (retired).
+- `/voyager/api/identity/profiles/<slug>/positionGroups` → `elements[]` newest first, each with `miniCompany` (`name`, `universalName`, `objectUrn`, `entityUrn`) and `positions[]` (`title`, `timePeriod`, `companyUrn`); the CURRENT employer is the first group holding a position with `startDate` and no `endDate`. Extract the numeric company ID from `miniCompany.objectUrn`, `miniCompany.entityUrn`, `positions[].companyUrn`, or `group.companyUrn` to build company-jobs search URLs (`/jobs/search-results/?keywords=jobs&origin=COMPANY_PAGE_JOBS_CLUSTER_EXPANSION&f_C=<id>`, omitting `currentJobId` when no job is selected) in one call. Use it when a page shows only the headline (a person's `recent-activity` page has no company link). `profiles/<slug>/profileView` answers 410 (retired).
 
 ## A person's profile and activity pages
 
@@ -118,7 +118,8 @@ Known edge: a profile whose top card lists only a school (no current employer) r
   same-origin `fetch` of `/feed/update/…` returns a page with no `og:` tags; and some browser-automation JS tools blank
   results that hold query strings or keys like `author`, so return bare IDs and build the URLs outside the page.
 - *Action:*
-  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a browser tab and scroll to the bottom 8 times, 1.2 s apart.
+  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a signed-in browser tab and scroll to the
+     bottom 8 times, 1.2 s apart.
   2. Each comment card is an element whose `componentkey` holds `activity:<19-digit post id>` and whose `innerText`
      (whitespace collapsed) ends with `Follow <their comment>`: match `/Follow (LOI|model|Finance)$/` and read the id.
      The comment's own id sits in `replaceableComment_urn:li:comment:(activity:<post>,<comment>)`.
@@ -142,18 +143,18 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
 - *Trigger:* you need the people you and someone share ("N mutual connections"), or every 2nd-degree person tied to
   a firm, for any "who do I know at X" question.
 - *Discrimination:* the mutuals link's `href` carries `connectionOf=<urn>` in a query string, and some browser-automation
-  JS tools blank results that hold query strings (one came back `[BLOCKED: Base64 encoded data]`), so never
+  JS tools blank results that hold query strings (the result came back `[BLOCKED: Base64 encoded data]`), so never
   return the URL; click the link in the page instead. The page number is a query param too: change it in-page with
   `new URL(location.href)`, never by typing a URL. A people search for the firm's name also returns other companies
   that share a word (a search for Acme Partners also brings up Acme Health): judge each card by its "<Role> at <Firm>" snippet.
 - *Action:*
-  1. Open the profile in a browser tab, wait ~2.5 s, then
+  1. Open the profile in a signed-in browser tab, wait ~2.5 s, then
      `[...document.querySelectorAll('a')].find(a=>/mutual/i.test(a.innerText)).click()`; the text says the count
      ("Ana, Ben and 50 other mutual connections" = 52).
   2. Each results page holds 10. Read names with a JS extractor over `document.querySelector('main').innerText` split
      into trimmed lines: a line ending `• 1st` (or followed by the line `• 1st`) is a name, the next line its headline.
      Next page: `const u=new URL(location.href); u.searchParams.set('page','2'); location.href=u.toString()`, then a
-     second call that waits ~4 s and extracts. Batch every page in one call; keep each result short (a
+     second call that waits ~4 s and extracts. Batch every page in one run; keep each result short (a
      long one comes back `[TRUNCATED]`: re-read that page with names only).
   3. People tied to a firm, 2nd degree: navigate to
      `https://www.linkedin.com/search/results/people/?keywords=<Firm>&network=%5B%22S%22%5D`; per card read the name
@@ -198,7 +199,7 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
      changing 4 checks in a row. Top Voices lines are followed by the sidebar's "More profiles for you": cut the text
      at that line, or sidebar people read as the person's follows.
   7. **Activity has three tabs; read all of them.** `recent-activity/all/` can say "Nothing to see for now" while
-     Comments and Reactions hold a year of items (one hiring manager: no posts, 11 comments, 18 reactions). Each
+     Comments and Reactions hold a year of items (a hiring manager: no posts, 11 comments, 18 reactions). Each
      reaction card starts with "<Name> likes this"; read its author, age and first long line.
      `all/` holds only the person's OWN posts and reposts, never their comments (a nonprofit director: 81 posts in
      `all/`, their 20 comments only on `comments/`). Each comment card's text holds the post's author headline first,
@@ -213,7 +214,7 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
 
 ## Debugging workflow
 
-1. Test JS from the shell against the real tab — this is what an automation tool's run-JavaScript action does:
+1. Test JS from the shell against the real tab — this is byte-identical to what an automation tool's run-JavaScript action does:
    ```applescript
    tell application "Google Chrome"
      repeat with w in windows
@@ -228,5 +229,4 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
    (Find the tab by URL substring — "active tab of front window" silently probes whatever tab the user switched to.)
 2. When the value is wrong, don't guess — enumerate: dump all candidate elements with alt/href/absolute-Y/closest-section and identify which one is the top card *on this render*.
 3. Test on **at least two different profiles** and on **fresh loads** before declaring a selector fixed.
-4. If the scraper runs inside an automation tool, do the final verification through that tool, since it may process text tokens and pick the front browser in its own way.
 
