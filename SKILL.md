@@ -1,11 +1,11 @@
 ---
 name: linkedin-ai-skill
-description: "Battle-tested patterns for scraping data out of LinkedIn pages in your logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
+description: "Battle-tested patterns for scraping data out of LinkedIn pages in the user's logged-in browser — profile names, current company, page-title cleanup — from automation scripts, AppleScript, or browser JavaScript. Use this skill whenever a task reads or extracts anything from a linkedin.com page (profile scraping, \"get the company from this LinkedIn profile\", LinkedIn link formatting, fixing a LinkedIn scraper that broke or returns the wrong value, or debugging LinkedIn DOM selectors). LinkedIn re-rolls its frontend markup PER PAGE LOAD, so selector advice from memory or a single inspection is wrong by design — always use the multi-variant strategy here. Also use for LinkedIn JOBS pages (search results, job view: the componentkey anchors, the scroll container, Messaging / nav elements), for a person's comments or activity (which posts they commented on, the exact comment link), for mutual connections with someone or the people who work or worked at a firm (people search), for reading a whole profile (every /details/ section), a whole activity feed or checking that a page was fully read, or any data LinkedIn hasn't rendered — the voyager REST endpoints (job description, company website) still answer same-origin fetches."
 ---
 
 # Scraping LinkedIn (logged-in DOM)
 
-Target: linkedin.com pages rendered in your logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
+Target: linkedin.com pages rendered in the user's logged-in Chromium browser, scraped via JavaScript injection (any automation tool's run-JavaScript action, or `osascript` → Chrome `execute … javascript`). Requires Chrome's View → Developer → **Allow JavaScript from Apple Events**.
 
 ## The cardinal fact: markup is re-rolled per page load
 
@@ -23,7 +23,7 @@ On logged-in SPA pages there is **no** `meta[name=description]`/og: tags, **no**
 
 ## The voyager API still answers same-origin fetches
 
-*Trigger:* you need data the page hasn't rendered — a job description in a background tab (LinkedIn renders lazy sections only in a VISIBLE tab), a company's website, the bold headings of a posting. *Discrimination:* the embedded JSON blobs are gone (above); the REST endpoints are not. They need the viewer's session: same-origin `fetch` from the page or a content script, `credentials: "include"`, header `csrf-token` = the `JSESSIONID` cookie value without quotes, `accept: application/json`. Unofficial — every call may fail; cache results and fail soft. An AI agent's permission checks may refuse such a `fetch` as website-access circumvention; then read the visible `/details/` pages instead ("Reading a whole profile" below). *Action:*
+*Trigger:* you need data the page hasn't rendered — a job description in a background tab (LinkedIn renders lazy sections only in a VISIBLE tab), a company's website, the bold headings of a posting. *Discrimination:* the embedded JSON blobs are gone (above); the REST endpoints are not. They need the viewer's session: same-origin `fetch` from the page or a content script, `credentials: "include"`, header `csrf-token` = the `JSESSIONID` cookie value without quotes, `accept: application/json`. Unofficial — every call may fail; cache results and fail soft. In a Claude Code session in auto mode the permission classifier may refuse such a `fetch` as website-access circumvention; then read the visible `/details/` pages instead ("Reading a whole profile" below). *Action:*
 - `/voyager/api/jobs/jobPostings/<jobId>` → `title`, `description.text` + `description.attributes` (Bold / Paragraph / ListItem ranges — the section headings; offsets drift after emoji, so match by text), `companyDetails` (`urn:li:fs_normalized_company:<id>`), `applyMethod` (`companyApplyUrl` for offsite apply).
 - `/voyager/api/entities/companies/<id>` → `name`, `websiteUrl` (the company page's own Website field — may carry a path like `/subscribe`), `universalName`, `description`.
 - `/voyager/api/identity/profiles/<slug>/positionGroups` → `elements[]` newest first, each with `miniCompany` (`name`, `universalName`, `objectUrn`, `entityUrn`) and `positions[]` (`title`, `timePeriod`, `companyUrn`); the CURRENT employer is the first group holding a position with `startDate` and no `endDate`. Extract the numeric company ID from `miniCompany.objectUrn`, `miniCompany.entityUrn`, `positions[].companyUrn`, or `group.companyUrn` to build company-jobs search URLs (`/jobs/search-results/?keywords=jobs&origin=COMPANY_PAGE_JOBS_CLUSTER_EXPANSION&f_C=<id>`, omitting `currentJobId` when no job is selected) in one call. Use it when a page shows only the headline (a person's `recent-activity` page has no company link). `profiles/<slug>/profileView` answers 410 (retired).
@@ -59,7 +59,7 @@ The "current company" in a profile's top card (right rail / under the name) has 
 
 Across every variant: **the top card is the highest company element on the page** (feed/experience modules render lower), and **the company row always sits above the school row**. So: collect candidates from all three patterns, compute absolute Y (`rect.top + window.scrollY` — scroll-proof), and take the minimum. Skip zero-size (hidden) elements and negative-Y stubs.
 
-Canonical scraper:
+Canonical scraper (deployed and verified):
 
 ```js
 (function () {
@@ -115,10 +115,10 @@ Known edge: a profile whose top card lists only a school (no current employer) r
 - *Trigger:* you need the link behind "<person> commented 'LOI'" (their keyword replies to "comment X and I'll send you
   Y" posts), for a dossier or for any claim about what they asked for.
 - *Discrimination:* the comments activity page shows the comment text but no post URL in any `href`; a signed-in
-  same-origin `fetch` of `/feed/update/…` returns a page with no `og:` tags; and some browser-automation JS tools blank
+  same-origin `fetch` of `/feed/update/…` returns a page with no `og:` tags; and the Claude in Chrome JS tool blanks
   results that hold query strings or keys like `author`, so return bare IDs and build the URLs outside the page.
 - *Action:*
-  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a signed-in browser tab and scroll to the
+  1. Open `https://www.linkedin.com/in/<slug>/recent-activity/comments/` in a Claude in Chrome tab and scroll to the
      bottom 8 times, 1.2 s apart.
   2. Each comment card is an element whose `componentkey` holds `activity:<19-digit post id>` and whose `innerText`
      (whitespace collapsed) ends with `Follow <their comment>`: match `/Follow (LOI|model|Finance)$/` and read the id.
@@ -140,21 +140,21 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
 
 ## Mutual connections, and who works (or worked) at a firm
 
-- *Trigger:* you need the people you and someone share ("N mutual connections"), or every 2nd-degree person tied to
+- *Trigger:* you need the people the user and someone share ("N mutual connections"), or every 2nd-degree person tied to
   a firm, for any "who do I know at X" question.
-- *Discrimination:* the mutuals link's `href` carries `connectionOf=<urn>` in a query string, and some browser-automation
-  JS tools blank results that hold query strings (the result came back `[BLOCKED: Base64 encoded data]`), so never
+- *Discrimination:* the mutuals link's `href` carries `connectionOf=<urn>` in a query string, and the Claude in Chrome
+  JS tool blanks results that hold query strings (the result came back `[BLOCKED: Base64 encoded data]`), so never
   return the URL; click the link in the page instead. The page number is a query param too: change it in-page with
   `new URL(location.href)`, never by typing a URL. A people search for the firm's name also returns other companies
   that share a word (a search for Acme Partners also brings up Acme Health): judge each card by its "<Role> at <Firm>" snippet.
 - *Action:*
-  1. Open the profile in a signed-in browser tab, wait ~2.5 s, then
+  1. Open the profile in a Claude in Chrome tab, wait ~2.5 s, then
      `[...document.querySelectorAll('a')].find(a=>/mutual/i.test(a.innerText)).click()`; the text says the count
      ("Ana, Ben and 50 other mutual connections" = 52).
   2. Each results page holds 10. Read names with a JS extractor over `document.querySelector('main').innerText` split
      into trimmed lines: a line ending `• 1st` (or followed by the line `• 1st`) is a name, the next line its headline.
      Next page: `const u=new URL(location.href); u.searchParams.set('page','2'); location.href=u.toString()`, then a
-     second call that waits ~4 s and extracts. Batch every page in one run; keep each result short (a
+     second call that waits ~4 s and extracts. Batch every page in one `browser_batch`; keep each result short (a
      long one comes back `[TRUNCATED]`: re-read that page with names only).
   3. People tied to a firm, 2nd degree: navigate to
      `https://www.linkedin.com/search/results/people/?keywords=<Firm>&network=%5B%22S%22%5D`; per card read the name
@@ -164,7 +164,7 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
   4. Profile slugs: `[...new Set([...document.querySelectorAll('main a[href*="/in/"]')].map(a=>(a.innerText.trim()
      .split('\n')[0])+' '+a.href.split('?')[0].replace('https://www.linkedin.com/in/','')))]` (strip the query string
      in-page so the result passes).
-  5. Close the tab when done.
+  5. Close the tab when done (`tabs_close_mcp`).
 
 ## Reading a whole profile, team page or feed
 
@@ -187,7 +187,7 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
      scroll every element whose `scrollHeight > clientHeight` with `overflowY` auto or scroll, and click the feed's
      "Show more results" button) until `main`'s length stops changing 4 checks in a row, then count the
      `Feed post` markers and read the oldest post's age; report "all N posts, back to <age>".
-  4. Results: some browser-automation JS tools cut any single string over about 1,000 characters to `[TRUNCATED]`;
+  4. Results: the Claude in Chrome JS tool cuts any single string over about 1,000 characters to `[TRUNCATED]`;
      return an array of short strings (one per line or card) instead of one long text.
   5. Linking a person found by name: people search `keywords=<name> <employer>`, then confirm the employer on the
      card's headline or snippet, or on the first entry of their `/details/experience/` (a card can show a headline
@@ -212,9 +212,23 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
      `/in/` links, so a name → slug map can hand one person's slug to the next card. Take the FIRST `/in/` link after
      the card's name line, and check a duplicate name (two cards with one name) by its headline.
 
+## "Can I connect Claude to LinkedIn?"
+
+- *Trigger:* the user asks for a LinkedIn connector or integration like Claude's other connectors: Claude seeing their
+  new connections, messages, feed or notifications.
+- *Discrimination:* Claude's connector directory (`search_mcp_registry` "linkedin") lists one connector made by
+  LinkedIn, **LinkedIn Hiring Pro** (`mcp.linkedin.com/mcp-hiring-pro`), which only drafts and posts a free job
+  listing. The rest are third parties: Crustdata (public company and people data), marketing and ad tools, and
+  account-automation tools (HeyReach, Postiv) that work without LinkedIn's approval and risk a ban. LinkedIn gives
+  connection data only to partners it approves (third-party guides; not confirmed on LinkedIn's own pages). Re-check
+  the registry before answering: this changes.
+- *Action:* answer that no connector reads the user's network, then give the two routes that work today: (1) Claude in
+  Chrome signed in as the user (this skill; their Connections page sorted by "Recently added"); (2) their LinkedIn Data Export:
+  `Connections.csv` has a `Connected On` column.
+
 ## Debugging workflow
 
-1. Test JS from the shell against the real tab — this is byte-identical to what an automation tool's run-JavaScript action does:
+1. Test JS from the shell against the real tab — this is byte-identical to what an automation tool's run-JavaScript action sends to Chrome:
    ```applescript
    tell application "Google Chrome"
      repeat with w in windows
@@ -230,3 +244,8 @@ Posts on `all/` may carry no id at all in the markup; then cite the profile's Fe
 2. When the value is wrong, don't guess — enumerate: dump all candidate elements with alt/href/absolute-Y/closest-section and identify which one is the top card *on this render*.
 3. Test on **at least two different profiles** and on **fresh loads** before declaring a selector fixed.
 
+## Using the company scrape in a link-building script
+
+A common use: on `https://www.linkedin.com/in/…` URLs, scrape the company with the JS above and offer to append ` (<Company>)` to a link's text → `[Andrew Grossman (Dow Jones)](url)`. When the scrape comes back empty, hide the option rather than appending empty parentheses. If your script cleans up the page title first (strip ` | LinkedIn`, remove parenthesized junk), append the company **after** that cleanup, or the parentheses-stripper will remove it.
+
+**Leftover headless Chrome hijacks Apple Events.** When you run the JS through AppleScript (`tell application "Google Chrome" … execute javascript`), stray `--headless=new` Chrome processes can receive the Apple Event instead of the visible browser and raise a false *"Allow JavaScript from Apple Events"* error even though the setting is on. Target the frontmost browser by its process ID (or bundle path of the running GUI instance) instead of by app name, so headless instances can never answer.
