@@ -34,10 +34,10 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 
 - 🏢 **Current employer from any profile** — all three top-card layouts, plus an API fallback
 - 📚 **Whole profiles and feeds, provably read** — every details page, all three activity tabs, interests lists
-- 💼 **Jobs pages mapped** — stable anchors for job cards, details, filters and scrolling
-- 📡 **Data the page never rendered** — job descriptions and company websites via LinkedIn's internal API
+- 💼 **Jobs data, rendered or not** — stable job-card anchors, plus descriptions, websites and open roles
 - 💬 **A person's comments, linked exactly** — the post and the direct link to each comment
 - 🤝 **Who you know at a firm** — mutual connections and 2nd-degree staff, past and present
+- 🔌 **A straight answer on LinkedIn connectors** — what exists today, and the two routes that work
 - 🩺 **Debugging that finds the real cause** — probe the live tab, list candidates, test fresh loads
 
 ---
