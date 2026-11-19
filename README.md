@@ -28,7 +28,7 @@
 
 ## ✨ Features
 
-The skill starts from one fact most AIs miss: LinkedIn serves a different layout of the same page on each load, so it checks every known variant and picks by position, not by class name.
+The skill starts from one fact most AIs miss: LinkedIn serves a different layout of the same page on each load, so it checks every known variant, picks by position rather than class name, and tests fixes on fresh loads.
 
 ![The same request with and without the skill: without it, the AI writes a class selector that breaks on reload and needs four tries; with it, the AI checks all three variants and gets it right on the first try](docs/media/with-vs-without-skill.svg)
 
@@ -38,7 +38,7 @@ The skill starts from one fact most AIs miss: LinkedIn serves a different layout
 - 💬 **A person's comments, linked exactly** — the post and the direct link to each comment
 - 🤝 **Who you know at a firm** — mutual connections and 2nd-degree staff, past and present
 - 🔌 **A straight answer on LinkedIn connectors** — what exists today, and the two routes that work
-- 🩺 **Debugging that finds the real cause** — probe the live tab, list candidates, test fresh loads
+- 🔗 **Link checks that don't cry wolf** — a 403 or 999 from LinkedIn isn't a dead link
 
 ---
 
